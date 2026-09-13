@@ -4,6 +4,13 @@
 // app-vs-app head-to-head facts), and streams OpenAI responses.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  appBonusTotal,
+  dayShiftStats,
+  dayTotal,
+  operationalDayTotal,
+  parseEntries,
+} from "../_shared/dailyOps.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -201,70 +208,6 @@ function round(value: number): number {
 
 function roundCost(value: number): number {
   return +value.toFixed(8);
-}
-
-const BONUS_APP_NAMES = new Set(["octopus"]);
-
-function isBonusApp(app: string): boolean {
-  return BONUS_APP_NAMES.has(app.trim().toLowerCase());
-}
-
-function bonusDayTotal(d: DayEntry): number {
-  const manualBonuses = (d.bonuses ?? []).reduce((sum, bonus) => sum + Math.max(0, Number(bonus.amount) || 0), 0);
-  const legacyBonusApps = Object.entries(d.apps || {}).reduce((sum, [app, value]) => {
-    return isBonusApp(app) ? sum + Math.max(0, Number(value) || 0) : sum;
-  }, 0);
-  return manualBonuses + legacyBonusApps;
-}
-
-function appBonusTotal(d: DayEntry, app: string): number {
-  const target = app.trim().toLowerCase();
-  return (d.bonuses ?? []).reduce((sum, bonus) => {
-    return bonus.app.trim().toLowerCase() === target ? sum + Math.max(0, Number(bonus.amount) || 0) : sum;
-  }, 0);
-}
-
-function operationalDayTotal(d: DayEntry): number {
-  return Object.entries(d.apps || {}).reduce((s, [app, v]) => {
-    if (isBonusApp(app)) return s;
-    return s + Math.max(0, Number(v) || 0);
-  }, 0);
-}
-
-function dayTotal(d: DayEntry): number {
-  return operationalDayTotal(d) + bonusDayTotal(d);
-}
-
-function shiftDurationHours(shift: NonNullable<DayEntry["shifts"]>[number]): number {
-  if (!shift.endTime) return 0;
-  const start = Date.parse(shift.startTime);
-  const end = Date.parse(shift.endTime);
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 0;
-  return (end - start) / 3600000;
-}
-
-function dayShiftStats(day: DayEntry) {
-  const shifts = day.shifts ?? [];
-  const totalHours = shifts.reduce((sum, shift) => sum + shiftDurationHours(shift), 0);
-  const totalRides = shifts.reduce((sum, shift) => sum + Math.max(0, Math.trunc(Number(shift.rideCount) || 0)), 0);
-  const shiftMiles = shifts.reduce((sum, shift) => sum + (Number(shift.miles) || 0), 0);
-  return {
-    hours: round(totalHours),
-    rides: totalRides,
-    miles: round(shiftMiles || Number(day.mileage) || 0),
-    completedShifts: shifts.filter((shift) => Boolean(shift.endTime)).length,
-    activeShifts: shifts.filter((shift) => !shift.endTime).length,
-  };
-}
-
-function parseEntries(e: DayEntry[] | string): DayEntry[] {
-  if (Array.isArray(e)) return e;
-  try {
-    const parsed = JSON.parse(e);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
 }
 
 function normalizeWeek(w: WeekRow): NormalizedWeek {

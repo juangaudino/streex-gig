@@ -110,6 +110,7 @@ Generated client types: `src/integrations/supabase/types.ts`.
 - `admin-ops`: protected admin operations and account controls.
 - `admin-email`: re-engagement campaign foundation through Resend when configured.
 - `ask-my-data`: analytics context, intent routing, and OpenAI streaming response path; it remains unverified until its Supabase secret, deployment, and authenticated QA are complete.
+- `daily-ops-summary`: source-only deterministic GET endpoint for one authenticated calendar day; contract and deployment gate are documented in [`docs/DAILY_OPS_SUMMARY.md`](DAILY_OPS_SUMMARY.md). It is not deployed until the isolated branch is reviewed and authenticated QA is complete.
 
 Required secrets vary by function and belong only in Supabase secrets:
 
