@@ -111,6 +111,7 @@ Generated client types: `src/integrations/supabase/types.ts`.
 - `admin-email`: re-engagement campaign foundation through Resend when configured.
 - `ask-my-data`: analytics context, intent routing, and OpenAI streaming response path; it remains unverified until its Supabase secret, deployment, and authenticated QA are complete.
 - `daily-ops-summary`: source-only deterministic GET endpoint for one authenticated calendar day; contract and deployment gate are documented in [`docs/DAILY_OPS_SUMMARY.md`](DAILY_OPS_SUMMARY.md). It is not deployed until the isolated branch is reviewed and authenticated QA is complete.
+- `mcp`: isolated, read-only MCP bridge exposing only `get_daily_ops_summary` through Supabase OAuth; source and Dashboard/deployment gates are documented in [`docs/MCP_SUPABASE_OAUTH.md`](MCP_SUPABASE_OAUTH.md). It must never deploy `ask-my-data` or use `service_role`.
 
 Required secrets vary by function and belong only in Supabase secrets:
 

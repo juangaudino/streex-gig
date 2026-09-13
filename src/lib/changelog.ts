@@ -6,7 +6,7 @@ export interface ChangelogEntry {
   items: string[];
 }
 
-export const CURRENT_VERSION = "0.11.1";
+export const CURRENT_VERSION = "0.11.2";
 
 export function formatVersionLabel(version: string): string {
   const normalized = version.trim().replace(/^v/i, "");
@@ -17,6 +17,16 @@ export function formatVersionLabel(version: string): string {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "0.11.2",
+    date: "2026-09",
+    title: "Read-only MCP OAuth Bridge (Local Candidate)",
+    tags: ["new", "feature"],
+    items: [
+      "A Supabase OAuth-protected MCP endpoint exposes only the deterministic daily operations summary to an explicitly authorized connector",
+      "The consent page requires owner sign-in and explicit approval; the bridge performs no writes, model calls, or service-role access",
+    ],
+  },
   {
     version: "0.11.1",
     date: "2026-09",

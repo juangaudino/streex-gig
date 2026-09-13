@@ -2,6 +2,17 @@
 
 ## Beta Releases
 
+### Beta 0.11.2 — Read-only MCP OAuth Bridge (Local Candidate)
+
+### Added
+
+- A Supabase OAuth-protected MCP endpoint exposes only the deterministic daily operations summary to an explicitly authorized connector.
+- The consent page requires owner sign-in and explicit approval; the bridge performs no writes, model calls, or service-role access.
+
+### Verification Required
+
+- Enable Supabase OAuth Server, publish the `/oauth/consent` route, deploy only `daily-ops-summary` and `mcp` from the isolated branch, and complete authenticated connector QA.
+
 ### Ask My Data — OpenAI Provider Migration (Local Candidate)
 
 ### Changed

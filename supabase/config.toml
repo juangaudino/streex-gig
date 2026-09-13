@@ -1,1 +1,7 @@
 project_id = "ywbrovislvqkfzsyqpiv"
+
+# The MCP endpoint must handle OAuth discovery and protected-resource metadata
+# itself. `withSupabase({ auth: "user" })` still requires a valid user JWT for
+# every tool request; this flag does not make the endpoint anonymous.
+[functions.mcp]
+verify_jwt = false

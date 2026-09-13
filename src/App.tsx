@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import AuthPage from "./pages/AuthPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import LegalPage from "./pages/LegalPage";
+import OAuthConsentPage from "./pages/OAuthConsentPage";
 import { useAuth } from "./hooks/useAuth";
 import { useAppRuntime } from "./hooks/useAppRuntime";
 import { useWeekStore } from "./hooks/useWeekStore";
@@ -75,6 +76,7 @@ const App = () => {
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/privacy" element={<LegalPage type="privacy" />} />
             <Route path="/terms" element={<LegalPage type="terms" />} />
+            <Route path="/oauth/consent" element={<OAuthConsentPage user={null} signIn={signIn} signUp={signUp} />} />
             <Route path="*" element={<AuthPage signIn={signIn} signUp={signUp} />} />
           </Routes>
         </BrowserRouter>
@@ -134,6 +136,7 @@ const App = () => {
           <BrowserRouter>
             <Routes>
               <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/oauth/consent" element={<OAuthConsentPage user={user} signIn={signIn} signUp={signUp} />} />
               <Route element={<AppShell store={store} user={user} onSignOut={signOut} />}>
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/entry" element={<WeeklyEntryPage />} />
