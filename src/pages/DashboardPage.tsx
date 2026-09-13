@@ -394,6 +394,12 @@ export default function DashboardPage() {
   const todayName = dayNames[now.getDay()] as string;
   const todayEntry = openWeek.entries.find((d) => d.date === todayStr) ?? null;
   const todayTotal = todayEntry ? dayTotal(todayEntry) : 0;
+  const pickupInProgress = rideEvents.some(
+    (event) => event.status === "active"
+      && event.dayDate === todayStr
+      && event.lifecycleVersion === 2
+      && Boolean(event.pickupAt),
+  );
   const dayRec = getDayOfWeekRecord(weeks, todayName, todayStr);
   const dayPerformance = todayEntry
     ? buildDayPerformanceComparison({
@@ -710,8 +716,16 @@ export default function DashboardPage() {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Today Total</p>
-              <p className="text-5xl sm:text-6xl font-bold font-mono text-primary tracking-normal leading-none mt-1">
-                {formatCurrency(todayTotal, sym)}
+              <p
+                className={cn(
+                  "font-bold font-mono text-primary leading-none mt-1",
+                  pickupInProgress
+                    ? "text-3xl sm:text-4xl uppercase tracking-[0.14em]"
+                    : "text-5xl sm:text-6xl tracking-normal",
+                )}
+                aria-label={pickupInProgress ? "Driving — today's earnings hidden while the ride is in progress" : `Today total ${formatCurrency(todayTotal, sym)}`}
+              >
+                {pickupInProgress ? "Driving" : formatCurrency(todayTotal, sym)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Week total {formatCurrency(total, sym)}
