@@ -4,7 +4,7 @@ import { bestDay, dayTotal, formatCurrency, weekTotal } from "@/lib/store";
 import type { WeekRecord, DayEntry, EarningsAttribution, EarningsSnapshot } from "@/lib/types";
 import { getDayOfWeekRecord } from "@/components/ActiveMomentum";
 import { getWeeklyMomentumPreview } from "@/lib/career";
-import { getDayMiles, getDayRideCount, getDayShiftHours, getShiftMiles, resolveShiftEarnings } from "@/lib/shiftIntelligence";
+import { getDayMiles, getDayRideCount, getOperationalDayShiftHours, getShiftMiles, resolveShiftEarnings } from "@/lib/shiftIntelligence";
 import { operationalDayTotal } from "@/lib/rewardIncome";
 import { exportNodeAsPng, shareNodeAsPng } from "@/lib/shareExport";
 import { Activity, Trophy, Flame, TrendingUp, Sparkles, Target, Clock, Route, Share2, Download, StickyNote } from "lucide-react";
@@ -41,7 +41,7 @@ export default function EndDayDialog({
   const isBestDayOfWeek = todayT > 0 && bestCurrentDay.dayName === todayEntry.dayName && bestCurrentDay.total === todayT;
   const todayContribution = wt > 0 ? (todayT / wt) * 100 : null;
   const appsUsed = Object.entries(todayEntry.apps || {}).filter(([, value]) => (Number(value) || 0) > 0);
-  const hours = getDayShiftHours(todayEntry);
+  const hours = getOperationalDayShiftHours(openWeek, todayEntry.date);
   const miles = getDayMiles(todayEntry);
   const rides = getDayRideCount(todayEntry);
   const shifts = todayEntry.shifts ?? [];

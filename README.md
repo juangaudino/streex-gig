@@ -95,7 +95,7 @@ The repository deliberately distinguishes shipped product behavior from work tha
 
 Current public release: **Beta 0.9.6 — Earnings Attribution Integrity**
 
-Current local source candidate: **Beta 0.10.8 — Historical Snapshot Safety**
+Current local source candidate: **Beta 0.11.3 — Operational Day & Overnight Shift Integrity (not deployed)**
 
 See [`docs/PRODUCT_STATUS.md`](docs/PRODUCT_STATUS.md), [`docs/ROADMAP.md`](docs/ROADMAP.md), and [`CHANGELOG.md`](CHANGELOG.md) for the detailed release state.
 

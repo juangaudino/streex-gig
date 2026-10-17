@@ -4,7 +4,7 @@ import { Activity, CheckCircle2, Clock3, Pause, Play, RadioTower, Route, Square,
 import QuickEntryWidget from "@/components/QuickEntryWidget";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { dayTotal, formatCurrency, formatDate } from "@/lib/store";
+import { dayTotal, formatCurrency } from "@/lib/store";
 import {
   activeShiftDurationHours,
   createShift,
@@ -12,7 +12,7 @@ import {
   getActiveShift,
   getDayMiles,
   getDayRideCount,
-  getDayShiftHours,
+  getOperationalDayShiftHours,
   hasActiveShift,
   isShiftPaused,
   pauseActiveShift,
@@ -20,6 +20,7 @@ import {
 } from "@/lib/shiftIntelligence";
 import { adjustOctopusPoints } from "@/lib/octopusRewards";
 import type { StoreContext } from "./types";
+import { getOperationalDate } from "@/lib/operationalDay";
 
 function statusLabel(hasActive: boolean, paused: boolean) {
   if (!hasActive) return "Ready";
@@ -29,7 +30,7 @@ function statusLabel(hasActive: boolean, paused: boolean) {
 export default function LiveWorkModePage() {
   const { openWeek, weeks, settings, updateWeek, updateSettings, syncStatus, recordOperationalSnapshot } = useOutletContext<StoreContext>();
   const [now, setNow] = useState(() => new Date());
-  const todayDate = formatDate(now);
+  const todayDate = getOperationalDate(now);
   const todayIdx = openWeek?.entries.findIndex((day) => day.date === todayDate) ?? -1;
   const activeDayIdx = openWeek?.entries.findIndex(hasActiveShift) ?? -1;
   const today = openWeek && todayIdx >= 0 ? openWeek.entries[todayIdx] : null;
@@ -116,7 +117,7 @@ export default function LiveWorkModePage() {
     );
   }
 
-  const todayHours = getDayShiftHours(today);
+  const todayHours = getOperationalDayShiftHours(openWeek, today.date, now);
   const todayMiles = getDayMiles(today);
   const todayRides = getDayRideCount(today);
   const todayEarnings = dayTotal(today);

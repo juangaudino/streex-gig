@@ -47,6 +47,7 @@ import { useDriverUtility } from "@/hooks/useDriverUtility";
 import MetricDrillDownSheet, { type MetricDrillDownDetail } from "@/components/MetricDrillDownSheet";
 import type { WeekRecord } from "@/lib/types";
 import RideCaptureControl from "@/components/RideCaptureControl";
+import { getOperationalDate } from "@/lib/operationalDay";
 import { adjustOctopusPoints } from "@/lib/octopusRewards";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import OnboardingChecklist from "@/components/OnboardingChecklist";
@@ -214,7 +215,7 @@ export default function DashboardPage() {
   const { profile } = useUserProfile(user?.id);
   const onboarding = useOnboarding(user, weeks);
   const driverUtility = useDriverUtility();
-  const todayStr = formatDate(new Date());
+  const todayStr = getOperationalDate();
   const dailyStartHubKey = `streex_daily_start_hub_dismissed_${todayStr}`;
   const [dailyStartHubDismissed, setDailyStartHubDismissed] = useState(() => {
     try {
@@ -391,7 +392,8 @@ export default function DashboardPage() {
   // Smart systems
   const now = new Date();
   const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
-  const todayName = dayNames[now.getDay()] as string;
+  const operationalDateAsLocalNoon = new Date(`${todayStr}T12:00:00`);
+  const todayName = dayNames[operationalDateAsLocalNoon.getDay()] as string;
   const todayEntry = openWeek.entries.find((d) => d.date === todayStr) ?? null;
   const todayTotal = todayEntry ? dayTotal(todayEntry) : 0;
   const pickupInProgress = rideEvents.some(
@@ -449,7 +451,7 @@ export default function DashboardPage() {
   const dayVsAvg = dayRec.avg > 0 ? todayTotal - dayRec.avg : null;
   const dayVsAvgPct = dayRec.avg > 0 ? (todayTotal / dayRec.avg) * 100 : null;
   const showStandardMomentumChip = mood.momentumLabel !== smartHeader;
-  const todayHasShift = Boolean(todayEntry?.shifts?.length);
+  const todayHasShift = Boolean(todayEntry?.shifts?.length || openWeek.entries.some(hasActiveShift));
   const showDailyStartHub = Boolean(todayEntry && !todayEntry.dayClosed && !todayHasShift && !dailyStartHubDismissed);
   const currentWeekSnapshots = earningsSnapshots.filter((snapshot) => snapshot.weekId === openWeek.id);
   const historicalRank = todayEntry

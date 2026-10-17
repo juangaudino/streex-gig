@@ -30,6 +30,8 @@ export interface ShiftSession {
   id: string;
   startTime: string;
   endTime?: string;
+  /** Business date used for the shift's opening day; day rolls over at 4 a.m. local time. */
+  operationalDate?: string;
   blocks?: ShiftWorkBlock[];
   earnings?: number;
   miles?: number;

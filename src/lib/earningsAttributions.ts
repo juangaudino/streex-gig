@@ -115,7 +115,8 @@ function findDay(weeks: WeekRecord[], date: string): DayEntry | undefined {
 
 function findShift(weeks: WeekRecord[], date: string, shiftId?: string | null): ShiftSession | undefined {
   if (!shiftId) return undefined;
-  return findDay(weeks, date)?.shifts?.find((shift) => shift.id === shiftId);
+  return findDay(weeks, date)?.shifts?.find((shift) => shift.id === shiftId)
+    ?? weeks.flatMap((week) => week.entries).flatMap((day) => day.shifts ?? []).find((shift) => shift.id === shiftId);
 }
 
 function hasSuspiciousHistoricalScale(snapshot: EarningsSnapshot, day: DayEntry | undefined): boolean {

@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { getDayOfWeekRecord } from "@/components/ActiveMomentum";
 import { isExactTimeInsideWorkedShift } from "@/lib/earningsAttributions";
 import { triggerCelebration } from "@/components/RecordCelebration";
-import { createShift, endActiveShift, getActiveShift, getDayMiles, getDayShiftHours, getShiftMiles, hasActiveShift, isShiftPaused, pauseActiveShift, resumePausedShift, shiftDurationHours } from "@/lib/shiftIntelligence";
+import { createShift, endActiveShift, getActiveShift, getDayMiles, getDayRideCount, getOperationalDayShiftHours, getShiftMiles, hasActiveShift, isShiftPaused, pauseActiveShift, resumePausedShift, shiftDurationHours } from "@/lib/shiftIntelligence";
 import { isRewardApp } from "@/lib/rewardIncome";
 import { normalizeDecimalDraft, parseDecimalDraft } from "@/lib/decimalInput";
 import { applyAccumulatedDayAppRideCount, getAppRideCount, getDayAppRideCount, getDayUnattributedRideCount } from "@/lib/rideAttribution";
@@ -25,6 +25,7 @@ import { createOperationalEventKey } from "@/lib/operationalSnapshots";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { SingleFlight } from "@/lib/singleFlight";
+import { getOperationalDate } from "@/lib/operationalDay";
 
 interface QuickEntryWidgetProps {  
   openWeek: WeekRecord;
@@ -52,12 +53,7 @@ interface QuickEntryWidgetProps {
 }
 
 function getTodayDayIdx(week: WeekRecord): number {
-  const today = new Date();
-  // Use local date parts to avoid timezone offset issues
-  const y = today.getFullYear();
-  const m = String(today.getMonth() + 1).padStart(2, "0");
-  const d = String(today.getDate()).padStart(2, "0");
-  const todayStr = `${y}-${m}-${d}`;
+  const todayStr = getOperationalDate();
   const idx = week.entries.findIndex((d) => d.date === todayStr);
   return idx;
 }
@@ -102,7 +98,7 @@ export default function QuickEntryWidget({ openWeek, apps, currencySymbol, onSav
       setQuickApp(requestedApp);
       setQuickAmountDraft((Number(today.apps?.[requestedApp]) || 0) > 0 ? String(Number(today.apps?.[requestedApp]) || 0) : "");
       setLocalRideCount(getDayAppRideCount(today, requestedApp) > 0 ? String(getDayAppRideCount(today, requestedApp)) : "");
-      const active = getActiveShift(today);
+      const active = getActiveShift(today) ?? getActiveShift(openWeek.entries.find(hasActiveShift) ?? today);
       setAttributionChoice(active ? "automatic" : "pending");
       setAttributionShiftId(active?.id ?? "");
       setAttributionExactAt("");
@@ -115,7 +111,7 @@ export default function QuickEntryWidget({ openWeek, apps, currencySymbol, onSav
 
   function handleOpen(isOpen: boolean) {
     if (isOpen && today) {
-      const active = getActiveShift(today);
+      const active = getActiveShift(today) ?? getActiveShift(openWeek.entries.find(hasActiveShift) ?? today);
       setLocalApps({ ...today.apps });
       setLocalLogged(today.logged !== undefined ? today.logged : dayTotal(today) > 0);
       setResolvedIdx(todayIdx);
@@ -182,12 +178,20 @@ export default function QuickEntryWidget({ openWeek, apps, currencySymbol, onSav
     const prevTotal = dayTotal(today);
     const mileage = localMileage.trim() === "" ? null : Math.max(0, parseFloat(localMileage) || 0);
     const rides = localRideCount.trim() === "" ? null : Math.max(0, Math.trunc(Number(localRideCount) || 0));
-    const activeShift = getActiveShift(today);
+    const activeShift = getActiveShift(today) ?? getActiveShift(openWeek.entries.find(hasActiveShift) ?? today);
     const previousAmount = Number(today.apps?.[app]) || 0;
     const positiveDelta = appTotal - previousAmount;
-    const rideUpdate = activeShift && rides !== null
-      ? applyAccumulatedDayAppRideCount(today, activeShift.id, app, rides)
-      : null;
+    const rideUpdate = rides === null
+      ? null
+      : activeShift && today.shifts?.some((shift) => shift.id === activeShift.id)
+        ? applyAccumulatedDayAppRideCount(today, activeShift.id, app, rides)
+        : {
+            day: {
+              ...today,
+              rideCount: Math.max(0, getDayRideCount(today) + rides - getDayAppRideCount(today, app)),
+            },
+            appRideDelta: rides - getDayAppRideCount(today, app),
+          };
     const entries = openWeek.entries.map((d, i) => {
       if (i !== resolvedIdx) return d;
       const nextApps = { ...d.apps, [app]: appTotal };
@@ -197,9 +201,12 @@ export default function QuickEntryWidget({ openWeek, apps, currencySymbol, onSav
         apps: nextApps,
         logged: Object.values(nextApps).some((value) => (Number(value) || 0) > 0) ? true : d.logged,
         shifts,
+        ...(rideUpdate && !d.shifts?.some((shift) => shift.id === activeShift?.id)
+          ? { rideCount: rideUpdate.day.rideCount }
+          : {}),
       };
       if (mileage !== null) {
-        nextDay = activeShift
+        nextDay = activeShift && today.shifts?.some((shift) => shift.id === activeShift.id)
           ? applyAccumulatedDayMileage(nextDay, activeShift.id, mileage)
           : { ...nextDay, mileage };
       }
@@ -339,10 +346,10 @@ export default function QuickEntryWidget({ openWeek, apps, currencySymbol, onSav
         snapshot: {
           eventKey: createOperationalEventKey(),
           dayDate: nextDay.date,
-          shiftId: savedShift?.id ?? null,
+          shiftId: activeShift?.id ?? savedShift?.id ?? null,
           recordedAt: new Date().toISOString(),
           appTotals: { ...nextDay.apps },
-          ridesByApp: { ...(savedShift?.ridesByApp ?? {}) },
+          ridesByApp: { ...(savedShift?.ridesByApp ?? activeShift?.ridesByApp ?? {}) },
           dayMileage: getDayMiles(nextDay),
         },
         earningsSnapshotId,
@@ -444,13 +451,13 @@ export default function QuickEntryWidget({ openWeek, apps, currencySymbol, onSav
 
   const todayTotal = dayTotal(today);
   const now = new Date();
-  const dayLabel = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const dayLabel = new Date(`${today.date}T12:00:00`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   const isClosed = !!today.dayClosed;
-  const todayHasActiveShift = hasActiveShift(today);
   const weekHasActiveShift = openWeek.entries.some(hasActiveShift);
+  const todayHasActiveShift = hasActiveShift(today) || weekHasActiveShift;
   const activeShiftDayIdx = openWeek.entries.findIndex(hasActiveShift);
   const activeShiftDay = activeShiftDayIdx >= 0 ? openWeek.entries[activeShiftDayIdx] : today;
-  const shiftHours = getDayShiftHours(today);
+  const shiftHours = getOperationalDayShiftHours(openWeek, today.date);
   const standardApps = apps.filter((app) => !isRewardApp(app));
   const preferredApps = ["Uber", "Lyft"].filter((app) => standardApps.includes(app));
   const primaryApps = [

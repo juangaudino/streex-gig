@@ -4,15 +4,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { dayTotal, formatCurrency } from "@/lib/store";
 import { bonusDayTotal, isRewardApp, standardDayEarnings } from "@/lib/rewardIncome";
-import type { DayEntry } from "@/lib/types";
+import type { DayEntry, WeekRecord } from "@/lib/types";
 import { ArrowLeft, Plus, Save, StickyNote, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { getActiveShift, getDayRideCount, getDayShiftHours, getShiftMiles, hasActiveShift, isShiftPaused, shiftBreakHours, shiftDurationHours } from "@/lib/shiftIntelligence";
+import { getActiveShift, getDayRideCount, getOperationalDayShiftHours, getShiftMiles, hasActiveShift, isShiftPaused, shiftBreakHours, shiftDurationHours } from "@/lib/shiftIntelligence";
 import { formatRideAttribution } from "@/lib/rideAttribution";
 
 interface MobileDayDetailProps {
   day: DayEntry;
+  week?: WeekRecord;
   dayIdx: number;
   apps: string[];
   currencySymbol: string;
@@ -48,6 +49,7 @@ function isValidTimeInput(value: string): boolean {
 
 export default function MobileDayDetail({
   day,
+  week,
   dayIdx,
   apps,
   currencySymbol,
@@ -80,7 +82,7 @@ export default function MobileDayDetail({
   const activeShift = hasActiveShift(day);
   const openShift = getActiveShift(day);
   const activeShiftPaused = openShift ? isShiftPaused(openShift) : false;
-  const shiftHours = getDayShiftHours(day);
+  const shiftHours = week ? getOperationalDayShiftHours(week, day.date) : 0;
   const rideCount = getDayRideCount(day);
   const standardApps = apps.filter((app) => !isRewardApp(app));
 

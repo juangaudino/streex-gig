@@ -30,13 +30,14 @@ import { CalendarIcon } from "lucide-react";
 import MobileWeekOverview from "@/components/MobileWeekOverview";
 import MobileDayDetail from "@/components/MobileDayDetail";
 import WeekClosingDialog from "@/components/WeekClosingDialog";
-import { activeShiftDurationHours, createShift, endActiveShift, getDayShiftHours, getShiftMiles, getWeekMiles, getWeekRideCount, getWeekShiftHours, hasActiveShift, isShiftPaused, pauseActiveShift, resolveShiftRate, resumePausedShift, shiftBreakHours, shiftDurationHours, updateShiftBoundaryTime } from "@/lib/shiftIntelligence";
+import { activeShiftDurationHours, createShift, endActiveShift, getShiftMiles, getWeekMiles, getWeekRideCount, getWeekShiftHours, hasActiveShift, isShiftPaused, pauseActiveShift, resolveShiftRate, resumePausedShift, shiftBreakHours, shiftDurationHours, updateShiftBoundaryTime } from "@/lib/shiftIntelligence";
 import { isRewardApp, operationalWeekTotal } from "@/lib/rewardIncome";
 import { formatRideAttribution, getAppRideCount, replaceShiftTotalRideCount, updateShiftAppRideCount } from "@/lib/rideAttribution";
 import { replaceShiftMileage } from "@/lib/mileageAttribution";
 import RideCaptureControl from "@/components/RideCaptureControl";
 import RideAllocationLedger from "@/components/RideAllocationLedger";
 import ManualRideAllocationLedger from "@/components/ManualRideAllocationLedger";
+import { getOperationalDate } from "@/lib/operationalDay";
 
 function timeInputValue(value?: string): string {
   if (!value) return "";
@@ -65,8 +66,7 @@ function formatShiftTime(value?: string): string {
 }
 
 function localDateValue(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  return getOperationalDate();
 }
 
 export default function WeeklyEntryPage() {
@@ -619,15 +619,16 @@ export default function WeeklyEntryPage() {
   const weekRides = getWeekRideCount(editWeek);
   const weekEarningsPerHour = weekHours > 0 ? operationalWt / weekHours : null;
   const weekEarningsPerMile = weekMiles > 0 ? operationalWt / weekMiles : null;
-  const currentLocalDate = formatDate(new Date());
+  const currentLocalDate = getOperationalDate();
   const todayIndex = editWeek.entries.findIndex((day) => day.date === currentLocalDate);
   const shiftControlIndex = todayIndex;
   const shiftControlDay = shiftControlIndex >= 0 ? editWeek.entries[shiftControlIndex] : null;
-  const activeShift = shiftControlDay ? hasActiveShift(shiftControlDay) : false;
   const allShifts = editWeek.entries.flatMap((day, dayIdx) =>
     (day.shifts ?? []).map((shift) => ({ day, dayIdx, shift })),
   );
   const activeShiftBlock = allShifts.find(({ shift }) => !shift.endTime) ?? null;
+  const activeShift = Boolean(activeShiftBlock);
+  const shiftActionIndex = activeShiftBlock?.dayIdx ?? shiftControlIndex;
   const activeShiftPaused = activeShiftBlock ? isShiftPaused(activeShiftBlock.shift) : false;
   const historicalShifts = allShifts.filter(({ shift }) => shift.endTime);
   const shiftRate = (day: DayEntry, shift: ShiftSession) => {
@@ -639,6 +640,7 @@ export default function WeeklyEntryPage() {
     return (
       <MobileDayDetail
         day={editWeek.entries[selectedDayIdx]}
+        week={editWeek}
         dayIdx={selectedDayIdx}
         apps={apps}
         currencySymbol={sym}
@@ -820,12 +822,12 @@ export default function WeeklyEntryPage() {
               size="sm"
               variant={activeShift ? "secondary" : "default"}
               disabled={!shiftControlDay}
-              onClick={() => activeShift ? handlePauseResumeShift(shiftControlIndex) : handleStartShift(shiftControlIndex)}
+              onClick={() => activeShift ? handlePauseResumeShift(shiftActionIndex) : handleStartShift(shiftControlIndex)}
             >
               {activeShift ? activeShiftPaused ? "Resume Shift" : "Pause Shift" : "Start Shift"}
             </Button>
             {activeShift && (
-              <Button size="sm" variant="outline" disabled={!shiftControlDay} onClick={() => handleEndShift(shiftControlIndex)}>
+              <Button size="sm" variant="outline" disabled={shiftActionIndex < 0} onClick={() => handleEndShift(shiftActionIndex)}>
                 End
               </Button>
             )}

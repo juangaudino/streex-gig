@@ -6,7 +6,7 @@ export interface ChangelogEntry {
   items: string[];
 }
 
-export const CURRENT_VERSION = "0.11.2";
+export const CURRENT_VERSION = "0.11.3";
 
 export function formatVersionLabel(version: string): string {
   const normalized = version.trim().replace(/^v/i, "");
@@ -17,6 +17,18 @@ export function formatVersionLabel(version: string): string {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "0.11.3",
+    date: "2026-10",
+    title: "Operational Day & Overnight Shift Integrity (Local Candidate)",
+    tags: ["fix"],
+    items: [
+      "The operational date now changes at 4 a.m. local time, while shift timestamps keep their actual local calendar dates",
+      "Daily shift hours are apportioned across 4 a.m.-to-4 a.m. operational days without ending or duplicating an overnight shift",
+      "An active shift can continue across the boundary; new ride and earnings observations use the new operational date while retaining the shift link",
+      "No historical records, Supabase schema, or production deployment are changed",
+    ],
+  },
   {
     version: "0.11.2",
     date: "2026-09",

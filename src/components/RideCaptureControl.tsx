@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { captureForegroundZone } from "@/lib/movementCapture";
 import type { RideEvent, WeekRecord } from "@/lib/types";
 import { getActiveShift, hasActiveShift } from "@/lib/shiftIntelligence";
+import { getOperationalDate } from "@/lib/operationalDay";
 
 interface RideCaptureControlProps {
   openWeek: WeekRecord;
@@ -19,14 +20,10 @@ interface RideCaptureControlProps {
   compact?: boolean;
 }
 
-function localToday() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
 export default function RideCaptureControl({ openWeek, apps, rideEvents, onStart, onPickup, onFinish, onCancel, onUpdateTotals, compact = false }: RideCaptureControlProps) {
-  const today = openWeek.entries.find((day) => day.date === localToday()) ?? null;
-  const activeShift = today ? getActiveShift(today) : undefined;
+  const today = openWeek.entries.find((day) => day.date === getOperationalDate()) ?? null;
+  const activeShiftDay = openWeek.entries.find(hasActiveShift) ?? today;
+  const activeShift = activeShiftDay ? getActiveShift(activeShiftDay) : undefined;
   const activeRide = useMemo(() => rideEvents.find((event) => event.status === "active") ?? null, [rideEvents]);
   const completedPending = useMemo(() => rideEvents.filter((event) => event.status === "completed" && event.dayDate === today?.date).length, [rideEvents, today?.date]);
   const latestCompleted = useMemo(() => rideEvents.filter((event) => event.status === "completed" && event.dayDate === today?.date).sort((a, b) => (b.endedAt ?? "").localeCompare(a.endedAt ?? ""))[0] ?? null, [rideEvents, today?.date]);
@@ -74,7 +71,7 @@ export default function RideCaptureControl({ openWeek, apps, rideEvents, onStart
   }
 
   const minutes = activeRide ? Math.max(0, Math.floor((Date.now() - Date.parse(activeRide.startedAt)) / 60_000)) : 0;
-  const hasShift = Boolean(today && activeShift && hasActiveShift(today));
+  const hasShift = Boolean(today && activeShift);
   const isNewLifecycle = activeRide?.lifecycleVersion === 2;
   const pickupConfirmed = Boolean(activeRide?.pickupAt);
 

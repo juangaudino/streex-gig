@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPatternIntelligence, classifyWeeklyGoalOutcome, createHistoricalShift, getDayRideCount, getDayMiles, getWeekMiles, getWeekRideCount, isShiftPaused, pauseActiveShift, resolveShiftRate, resumePausedShift, shiftBreakHours, shiftDurationHours, updateShiftBoundaryTime } from "./shiftIntelligence";
+import { buildPatternIntelligence, classifyWeeklyGoalOutcome, createHistoricalShift, createShift, endActiveShift, getDayRideCount, getDayMiles, getDayShiftHours, getOperationalDayShiftHours, getWeekMiles, getWeekRideCount, isShiftPaused, pauseActiveShift, resolveShiftRate, resumePausedShift, shiftBreakHours, shiftDurationHours, updateShiftBoundaryTime } from "./shiftIntelligence";
 import type { DayEntry, EarningsAttribution, EarningsSnapshot, WeekRecord } from "./types";
 import { DAY_NAMES } from "./types";
 
@@ -71,6 +71,47 @@ describe("shift intelligence", () => {
 
     expect(shiftDurationHours(shift)).toBe(9.25);
     expect(shiftBreakHours(shift)).toBe(0.75);
+  });
+
+  it("keeps the real local date when a shift ends after midnight", () => {
+    const shift = createShift("2026-09-11", new Date(2026, 8, 11, 17, 48, 0));
+    const shiftDay = day(0, 0, [shift]);
+    const ended = endActiveShift(shiftDay, new Date(2026, 8, 12, 1, 3, 0)).shifts?.[0];
+
+    expect(ended?.startTime).toBe("2026-09-11T17:48:00");
+    expect(ended?.endTime).toBe("2026-09-12T01:03:00");
+    expect(shiftDurationHours(ended!)).toBe(7.25);
+    expect(getDayShiftHours({ ...shiftDay, shifts: [ended!] })).toBe(7.25);
+  });
+
+  it("reads a previously saved same-date overnight boundary as next-day without rewriting it", () => {
+    const legacyShift = {
+      id: "legacy-overnight",
+      startTime: "2026-09-11T17:48:00",
+      endTime: "2026-09-11T01:03:00",
+      blocks: [{ id: "legacy-block", startTime: "2026-09-11T17:48:00", endTime: "2026-09-11T01:03:00" }],
+    };
+
+    expect(shiftDurationHours(legacyShift)).toBe(7.25);
+    expect(legacyShift.endTime).toBe("2026-09-11T01:03:00");
+  });
+
+  it("splits cross-boundary work hours across operational days without ending the shift", () => {
+    const shift = {
+      id: "overnight",
+      startTime: "2026-09-11T23:00:00",
+      endTime: "2026-09-12T05:00:00",
+      blocks: [{ id: "overnight_block", startTime: "2026-09-11T23:00:00", endTime: "2026-09-12T05:00:00" }],
+    };
+    const entries = [
+      { ...day(0, 0), date: "2026-09-11", shifts: [shift] },
+      { ...day(1, 0), date: "2026-09-12", shifts: [] },
+    ];
+    const sourceWeek = week(entries);
+
+    expect(getOperationalDayShiftHours(sourceWeek, "2026-09-11")).toBe(5);
+    expect(getOperationalDayShiftHours(sourceWeek, "2026-09-12")).toBe(1);
+    expect(shiftDurationHours(shift)).toBe(6);
   });
 
   it("treats edited shift boundaries as authoritative over stale work blocks", () => {
