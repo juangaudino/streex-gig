@@ -3,6 +3,7 @@ import { earningsSnapshotTransitionKey, reconcileEarningsSnapshotDeltas } from "
 import { buildAttributedHourAmounts, effectiveShiftId } from "./earningsAttributions";
 import type { DayEntry, EarningsAttribution, EarningsSnapshot, ShiftSession, ShiftWorkBlock, WeekRecord } from "./types";
 import { getAccumulatedDayMileage, getEffectiveShiftMileage } from "./mileageAttribution";
+import { formatLocalTimestamp, OPERATIONAL_DAY_BOUNDARY_HOUR, resolveLegacyOvernightEnd } from "./operationalDay";
 
 export interface ShiftSummary {
   totalShifts: number;
@@ -71,8 +72,8 @@ function money(value: unknown): number | null {
   return +parsed.toFixed(2);
 }
 
-function shiftTimestamp(date: string, now = new Date()): string {
-  return `${date}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:00`;
+function shiftTimestamp(_operationalDate: string, now = new Date()): string {
+  return formatLocalTimestamp(now);
 }
 
 function createWorkBlock(shiftId: string, startTime: string, index = 0): ShiftWorkBlock {
@@ -95,11 +96,12 @@ export function getShiftBlocks(shift: ShiftSession): ShiftWorkBlock[] {
     ? shift.blocks
     : [{ id: `${shift.id}_block_1`, startTime: shift.startTime, endTime: shift.endTime }];
   const shiftStart = Date.parse(shift.startTime);
-  const shiftEnd = shift.endTime ? Date.parse(shift.endTime) : null;
+  const resolvedShiftEndTime = resolveLegacyOvernightEnd(shift.startTime, shift.endTime);
+  const shiftEnd = resolvedShiftEndTime ? Date.parse(resolvedShiftEndTime) : null;
 
   return source.flatMap((block, index) => {
     let startTime = index === 0 ? shift.startTime : block.startTime;
-    let endTime = block.endTime ?? (index === source.length - 1 ? shift.endTime : undefined);
+    let endTime = resolveLegacyOvernightEnd(startTime, block.endTime ?? (index === source.length - 1 ? resolvedShiftEndTime : undefined));
     let start = Date.parse(startTime);
     let end = endTime ? Date.parse(endTime) : null;
 
@@ -108,7 +110,7 @@ export function getShiftBlocks(shift: ShiftSession): ShiftWorkBlock[] {
       start = shiftStart;
     }
     if (shiftEnd !== null && Number.isFinite(shiftEnd) && end !== null && Number.isFinite(end) && end > shiftEnd) {
-      endTime = shift.endTime;
+      endTime = resolvedShiftEndTime;
       end = shiftEnd;
     }
     if (end !== null && Number.isFinite(start) && Number.isFinite(end) && end <= start) return [];
@@ -121,7 +123,9 @@ export function updateShiftBoundaryTime(
   field: "startTime" | "endTime",
   value: string,
 ): ShiftSession | null {
-  const next = { ...shift, [field]: value };
+  const next = field === "endTime"
+    ? { ...shift, endTime: resolveLegacyOvernightEnd(shift.startTime, value) }
+    : { ...shift, startTime: value };
   if (next.endTime && Date.parse(next.endTime) <= Date.parse(next.startTime)) return null;
   const source = shift.blocks?.length
     ? shift.blocks
@@ -203,14 +207,40 @@ export function getWeekShiftHours(week: WeekRecord): number {
   return round(week.entries.reduce((sum, day) => sum + getDayShiftHours(day), 0));
 }
 
+/** Worked hours inside one 4 a.m.–4 a.m. local operational day, including a shift opened on a prior day. */
+export function getOperationalDayShiftHours(week: WeekRecord, date: string, now = new Date()): number {
+  const [year, month, dayOfMonth] = date.split("-").map(Number);
+  if (![year, month, dayOfMonth].every(Number.isFinite)) return 0;
+  const start = new Date(year, month - 1, dayOfMonth, OPERATIONAL_DAY_BOUNDARY_HOUR).getTime();
+  const endDate = new Date(year, month - 1, dayOfMonth + 1, OPERATIONAL_DAY_BOUNDARY_HOUR);
+  const end = endDate.getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 0;
+  let hours = 0;
+
+  for (const shift of week.entries.flatMap((entry) => entry.shifts ?? [])) {
+    for (const block of getShiftBlocks(shift)) {
+      const blockStart = Date.parse(block.startTime);
+      const blockEnd = Date.parse(block.endTime ?? (!shift.endTime ? formatLocalTimestamp(now) : ""));
+      if (!Number.isFinite(blockStart) || !Number.isFinite(blockEnd) || blockEnd <= blockStart) continue;
+      hours += Math.max(0, Math.min(end, blockEnd) - Math.max(start, blockStart)) / 3_600_000;
+    }
+  }
+
+  if (hours > 0) return round(hours);
+  const dayEntry = week.entries.find((entry) => entry.date === date);
+  return dayEntry && !(dayEntry.shifts?.length) && Number.isFinite(dayEntry.workedHours)
+    ? Math.max(0, Number(dayEntry.workedHours))
+    : 0;
+}
+
 export function createShift(date: string, now = new Date()): ShiftSession {
   const current = new Date(now);
-  const datePrefix = date || current.toISOString().slice(0, 10);
   const id = `shift_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const startTime = `${datePrefix}T${String(current.getHours()).padStart(2, "0")}:${String(current.getMinutes()).padStart(2, "0")}:00`;
+  const startTime = formatLocalTimestamp(current);
   return {
     id,
     startTime,
+    operationalDate: date || startTime.slice(0, 10),
     blocks: [createWorkBlock(id, startTime)],
   };
 }
@@ -224,6 +254,7 @@ export function createHistoricalShift(date: string): ShiftSession {
     id,
     startTime,
     endTime,
+    operationalDate: datePrefix,
     blocks: [{ ...createWorkBlock(id, startTime), endTime }],
   };
 }
@@ -237,10 +268,10 @@ export function getActiveShift(day: DayEntry): ShiftSession | null {
 }
 
 function isSnapshotInsideShift(snapshot: EarningsSnapshot, shift: ShiftSession): boolean {
-  if (snapshot.dayDate !== shift.startTime.slice(0, 10)) return false;
   const created = Date.parse(snapshot.createdAt);
   const start = Date.parse(shift.startTime);
-  const end = shift.endTime ? Date.parse(shift.endTime) : Date.now();
+  const resolvedEnd = resolveLegacyOvernightEnd(shift.startTime, shift.endTime);
+  const end = resolvedEnd ? Date.parse(resolvedEnd) : Date.now();
   if (!Number.isFinite(created) || !Number.isFinite(start) || !Number.isFinite(end)) return false;
   return created >= start && created <= end;
 }
@@ -256,10 +287,10 @@ function snapshotShiftEarnings(shift: ShiftSession, snapshots: EarningsSnapshot[
     if (isRewardApp(snapshot.app)) return false;
     const attribution = bySnapshot.get(snapshot.id);
     const effectiveDay = attribution?.status === "resolved" ? attribution.attributedDayDate : snapshot.dayDate;
-    if (effectiveDay !== shift.startTime.slice(0, 10)) return false;
     if (attribution) return attribution.status === "resolved" && attribution.shiftId === shift.id;
-    if (weeks.length) return effectiveShiftId(snapshot, undefined, weeks) === shift.id;
     if (snapshot.shiftId) return snapshot.shiftId === shift.id;
+    if (effectiveDay !== (shift.operationalDate ?? shift.startTime.slice(0, 10))) return false;
+    if (weeks.length) return effectiveShiftId(snapshot, undefined, weeks) === shift.id;
     return isSnapshotInsideShift(snapshot, shift);
   });
 

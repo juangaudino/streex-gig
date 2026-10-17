@@ -1,6 +1,6 @@
 # Streex App Status Master
 
-Last updated: 2026-09-06
+Last updated: 2026-10-17
 
 This is the living master status file for Streex Gig Earnings. Claude, ChatGPT, Codex, and Lovable should read this file before giving product, UX, architecture, or implementation advice.
 
@@ -27,7 +27,7 @@ Beta 0.9.6 - Earnings Attribution Integrity
 Current local source candidate:
 
 ```text
-Beta 0.11.0 - Ride Lifecycle: En route, Pickup & Finish (local candidate; active-backend migration required)
+Beta 0.11.2 - Operational Day & Overnight Shift Integrity
 ```
 
 Next approved product sequence:

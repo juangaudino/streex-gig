@@ -22,6 +22,20 @@ describe("canonical data integrity contracts", () => {
     expect(csv).toContain(",48.5,3.5,6,true,");
   });
 
+  it("does not flag a legacy same-date overnight shift as inverted", () => {
+    const overnight = structuredClone(representativeAuditWeek);
+    const day = overnight.entries[0];
+    const shift = day.shifts![0];
+    shift.startTime = `${day.date}T17:48:00`;
+    shift.endTime = `${day.date}T01:03:00`;
+    shift.blocks = [{ id: "overnight-block", startTime: shift.startTime, endTime: shift.endTime }];
+
+    const issueCodes = inspectWeekIntegrity(overnight).map((issue) => issue.code);
+    expect(issueCodes).not.toContain("INVERTED_SHIFT");
+    expect(issueCodes).not.toContain("INVERTED_BLOCK");
+    expect(issueCodes).not.toContain("BLOCK_OUTSIDE_SHIFT");
+  });
+
   it("detects corrupt attribution, mileage, overlap and snapshot transitions", () => {
     const corrupt = structuredClone(representativeAuditWeek);
     corrupt.entries[0].shifts![0].rideCount = 2;

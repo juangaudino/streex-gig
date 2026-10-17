@@ -3,7 +3,7 @@ import { dayTotal, formatCurrency } from "./store";
 import {
   getDayMiles,
   getDayRideCount,
-  getDayShiftHours,
+  getOperationalDayShiftHours,
   getShiftMiles,
   resolveShiftRate,
   shiftDurationHours,
@@ -389,7 +389,7 @@ export function buildDeepInsightsData(args: {
         weekStartDate: week.startDate,
         earnings,
         operationalEarnings,
-        hours: selectedApp ? 0 : getDayShiftHours(day),
+        hours: selectedApp ? 0 : getOperationalDayShiftHours(week, day.date),
         miles: selectedApp ? 0 : getDayMiles(day),
         rides: selectedApp ? 0 : getDayRideCount(day),
         shifts: selectedApp ? 0 : (day.shifts ?? []).length,

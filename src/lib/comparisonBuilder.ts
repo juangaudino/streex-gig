@@ -1,6 +1,6 @@
 import { appBonusTotal, operationalDayTotal } from "./rewardIncome";
 import { dayTotal, formatCurrency } from "./store";
-import { buildPatternIntelligence, getDayMiles, getDayRideCount, getDayShiftHours, shiftDurationHours } from "./shiftIntelligence";
+import { buildPatternIntelligence, getDayMiles, getDayRideCount, getDayShiftHours, getOperationalDayShiftHours, shiftDurationHours } from "./shiftIntelligence";
 import type { DayEntry, WeekRecord } from "./types";
 
 export type ComparisonBlockType = "day" | "week" | "month" | "year" | "custom";
@@ -198,7 +198,8 @@ export function buildComparisonResult(args: {
 
   const dayRows = days.map((day) => {
     const earnings = selectedApp ? appEarnings(day, selectedApp) : dayTotal(day);
-    const hours = selectedApp ? null : getDayShiftHours(day);
+    const sourceWeek = weeks.find((week) => week.entries.some((entry) => entry.date === day.date));
+    const hours = selectedApp ? null : sourceWeek ? getOperationalDayShiftHours(sourceWeek, day.date) : getDayShiftHours(day);
     const miles = selectedApp ? null : getDayMiles(day);
     const rides = selectedApp ? null : getDayRideCount(day);
     const operationalEarnings = selectedApp ? null : operationalDayTotal(day);

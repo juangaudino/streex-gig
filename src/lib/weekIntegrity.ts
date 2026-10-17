@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DAY_NAMES, type EarningsSnapshot, type WeekRecord } from "./types";
+import { resolveLegacyOvernightEnd } from "./operationalDay";
 
 export type IntegritySeverity = "P0" | "P1" | "P2" | "P3";
 
@@ -91,10 +92,11 @@ export function inspectWeekIntegrity(week: WeekRecord): IntegrityIssue[] {
     const shifts = day.shifts ?? [];
     shifts.forEach((shift, shiftIndex) => {
       const shiftPath = `${path}.shifts[${shiftIndex}]`;
-      if (dateOnly(shift.startTime) !== day.date || (shift.endTime && dateOnly(shift.endTime) !== day.date)) {
+      const normalizedShiftEnd = resolveLegacyOvernightEnd(shift.startTime, shift.endTime);
+      if ((shift.operationalDate ?? dateOnly(shift.startTime)) !== day.date) {
         issues.push({ severity: "P1", code: "SHIFT_OUTSIDE_DAY", path: shiftPath, message: "Shift boundary is outside its day." });
       }
-      if (shift.endTime && Date.parse(shift.endTime) <= Date.parse(shift.startTime)) {
+      if (normalizedShiftEnd && Date.parse(normalizedShiftEnd) <= Date.parse(shift.startTime)) {
         issues.push({ severity: "P1", code: "INVERTED_SHIFT", path: shiftPath, message: "Shift end does not follow its start." });
       }
       const attributed = Object.values(shift.ridesByApp ?? {}).reduce((sum, value) => sum + value, 0);
@@ -102,11 +104,12 @@ export function inspectWeekIntegrity(week: WeekRecord): IntegrityIssue[] {
         issues.push({ severity: "P1", code: "RIDES_ATTRIBUTION_EXCEEDS_TOTAL", path: shiftPath, message: "App ride counts exceed the shift total." });
       }
       (shift.blocks ?? []).forEach((block, blockIndex) => {
+        const normalizedBlockEnd = resolveLegacyOvernightEnd(block.startTime, block.endTime);
         if (Date.parse(block.startTime) < Date.parse(shift.startTime)
-          || (shift.endTime && (!block.endTime || Date.parse(block.endTime) > Date.parse(shift.endTime)))) {
+          || (normalizedShiftEnd && (!normalizedBlockEnd || Date.parse(normalizedBlockEnd) > Date.parse(normalizedShiftEnd)))) {
           issues.push({ severity: "P1", code: "BLOCK_OUTSIDE_SHIFT", path: `${shiftPath}.blocks[${blockIndex}]`, message: "Work block exceeds edited shift boundaries." });
         }
-        if (block.endTime && Date.parse(block.endTime) <= Date.parse(block.startTime)) {
+        if (normalizedBlockEnd && Date.parse(normalizedBlockEnd) <= Date.parse(block.startTime)) {
           issues.push({ severity: "P1", code: "INVERTED_BLOCK", path: `${shiftPath}.blocks[${blockIndex}]`, message: "Work block end does not follow its start." });
         }
       });

@@ -1,5 +1,5 @@
 import { buildAttributedHourAmounts, resolveDayPerformanceEarnings, type AttributedHourAmount } from "./earningsAttributions";
-import { getDayShiftHours, shiftDurationHours } from "./shiftIntelligence";
+import { getOperationalDayShiftHours } from "./shiftIntelligence";
 import { dayTotal } from "./store";
 import type { DayEntry, EarningsAttribution, EarningsSnapshot, WeekRecord } from "./types";
 
@@ -26,10 +26,8 @@ export interface DayPerformanceComparison {
   signal: "strong-output-efficient" | "short-efficient" | "high-output-longer" | "below-typical" | "building";
 }
 
-function completedDayHours(day: DayEntry): number {
-  return round((day.shifts ?? [])
-    .filter((shift) => shift.endTime)
-    .reduce((sum, shift) => sum + shiftDurationHours(shift), 0));
+function completedDayHours(week: WeekRecord, day: DayEntry): number {
+  return getOperationalDayShiftHours(week, day.date);
 }
 
 export function getWeekdayEfficiencyBenchmark(args: {
@@ -48,7 +46,7 @@ export function getWeekdayEfficiencyBenchmark(args: {
     for (const day of week.entries) {
       if (day.dayName !== args.dayName || (args.excludeDate && day.date === args.excludeDate)) continue;
       if (dayTotal(day) > 0) earningDayCount += 1;
-      const hours = completedDayHours(day);
+      const hours = completedDayHours(week, day);
       if (hours <= 0) continue;
       const performance = resolveDayPerformanceEarnings({
         day,
@@ -97,7 +95,8 @@ export function buildDayPerformanceComparison(args: {
     attributions,
     attributedSegments,
   });
-  const currentHours = getDayShiftHours(args.day, args.now);
+  const currentWeek = args.weeks.find((week) => week.entries.some((day) => day.date === args.day.date));
+  const currentHours = currentWeek ? getOperationalDayShiftHours(currentWeek, args.day.date, args.now) : 0;
   const currentEarningsPerHour = currentHours > 0 ? round(performance.earnings / currentHours) : null;
   const historicalEarningsPerHour = benchmark.earningsPerHour;
   const difference = currentEarningsPerHour !== null && historicalEarningsPerHour !== null

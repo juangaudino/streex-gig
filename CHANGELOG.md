@@ -2,6 +2,19 @@
 
 ## Beta Releases
 
+### Beta 0.11.2 — Operational Day & Overnight Shift Integrity
+
+### Fixed
+
+- The operational date now rolls over at 4:00 a.m. local time, so overnight work and live captures stay on the intended business day.
+- Shift start, pause, resume, and end timestamps now preserve their actual local calendar date; an overnight shift no longer appears as zero hours because its end was stored before its start.
+- Work hours are apportioned to each 4 a.m.–4 a.m. operational day in daily operational summaries while the continuous shift itself remains one session.
+- A shift that remains active after the boundary stays available for ride capture and earnings updates, with new observations recorded under the new operational day and linked to that ongoing shift.
+
+### Data Integrity
+
+- Existing week, ride, snapshot, allocation, and zone records are not rewritten; the change is additive and uses the existing JSON shift model.
+- No Supabase schema migration is required, and existing historical records are not rewritten.
 ### Ask My Data — OpenAI Provider Migration (Local Candidate)
 
 ### Changed
