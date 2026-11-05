@@ -4,6 +4,8 @@ import { buildAttributedHourAmounts, effectiveShiftId } from "./earningsAttribut
 import type { DayEntry, EarningsAttribution, EarningsSnapshot, ShiftSession, ShiftWorkBlock, WeekRecord } from "./types";
 import { getAccumulatedDayMileage, getEffectiveShiftMileage } from "./mileageAttribution";
 import { formatLocalTimestamp, OPERATIONAL_DAY_BOUNDARY_HOUR, resolveLegacyOvernightEnd } from "./operationalDay";
+import { getShiftBlocks, shiftDurationHours } from "../../supabase/functions/_shared/shiftTiming";
+export { getShiftBlocks, shiftDurationHours } from "../../supabase/functions/_shared/shiftTiming";
 
 export interface ShiftSummary {
   totalShifts: number;
@@ -91,33 +93,6 @@ function durationHours(startTime?: string, endTime?: string): number {
   return round((end - start) / 3600000);
 }
 
-export function getShiftBlocks(shift: ShiftSession): ShiftWorkBlock[] {
-  const source = shift.blocks?.length
-    ? shift.blocks
-    : [{ id: `${shift.id}_block_1`, startTime: shift.startTime, endTime: shift.endTime }];
-  const shiftStart = Date.parse(shift.startTime);
-  const resolvedShiftEndTime = resolveLegacyOvernightEnd(shift.startTime, shift.endTime);
-  const shiftEnd = resolvedShiftEndTime ? Date.parse(resolvedShiftEndTime) : null;
-
-  return source.flatMap((block, index) => {
-    let startTime = index === 0 ? shift.startTime : block.startTime;
-    let endTime = resolveLegacyOvernightEnd(startTime, block.endTime ?? (index === source.length - 1 ? resolvedShiftEndTime : undefined));
-    let start = Date.parse(startTime);
-    let end = endTime ? Date.parse(endTime) : null;
-
-    if (Number.isFinite(shiftStart) && Number.isFinite(start) && start < shiftStart) {
-      startTime = shift.startTime;
-      start = shiftStart;
-    }
-    if (shiftEnd !== null && Number.isFinite(shiftEnd) && end !== null && Number.isFinite(end) && end > shiftEnd) {
-      endTime = resolvedShiftEndTime;
-      end = shiftEnd;
-    }
-    if (end !== null && Number.isFinite(start) && Number.isFinite(end) && end <= start) return [];
-    return [{ ...block, startTime, endTime }];
-  });
-}
-
 export function updateShiftBoundaryTime(
   shift: ShiftSession,
   field: "startTime" | "endTime",
@@ -136,10 +111,6 @@ export function updateShiftBoundaryTime(
     ...(index === source.length - 1 && next.endTime ? { endTime: next.endTime } : {}),
   }));
   return { ...next, blocks: getShiftBlocks({ ...next, blocks }) };
-}
-
-export function shiftDurationHours(shift: ShiftSession): number {
-  return round(getShiftBlocks(shift).reduce((sum, block) => sum + durationHours(block.startTime, block.endTime), 0));
 }
 
 export function activeShiftDurationHours(shift: ShiftSession, now = new Date()): number {

@@ -117,7 +117,7 @@ export default function AssistantPage() {
           Authorization: `Bearer ${session.access_token}`,
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({ messages: next, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
@@ -379,7 +379,7 @@ export default function AssistantPage() {
       </form>
 
       <p className="mt-2 shrink-0 pb-[max(env(safe-area-inset-bottom),0.25rem)] text-center text-[10px] text-muted-foreground/70">
-        Beta · responses may be imperfect · data stays inside your account
+        Beta · responses may be imperfect · AI questions and summarized data may be sent to OpenAI
       </p>
     </div>
   );

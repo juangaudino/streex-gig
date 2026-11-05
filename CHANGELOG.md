@@ -2,6 +2,20 @@
 
 ## Beta Releases
 
+### Beta 0.11.3 — Ask My Data Evidence and Accuracy
+
+### Fixed
+
+- Hourly comparisons use earnings and completed work hours from the same eligible days, excluding unresolved earnings and pauses.
+- Date-specific questions use the requested period; calendar-month summaries assign each day to its actual month.
+- Zone earnings avoid counting a snapshot twice, and ride-time rates use only rides with valid durations. Estimated snapshot-based windows are labeled and include worked days without earnings.
+- Local-time analysis uses the browser's time zone; missing or ambiguous timing is not guessed.
+- AI privacy copy clarifies that questions and summarized data may be sent to OpenAI. Prompt text is not stored in usage logs.
+
+### Verification Required
+
+- Deploy the `ask-my-data` Edge Function and frontend, then verify authenticated answers against the owner's actual records. No historical earnings or schema are rewritten.
+
 ### Beta 0.11.2 — Operational Day & Overnight Shift Integrity
 
 ### Fixed

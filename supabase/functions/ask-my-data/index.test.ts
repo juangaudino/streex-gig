@@ -156,8 +156,8 @@ Deno.test("directMobilityAnswer: combined total and hourly weekday question retu
   }, "$", "¿Cuál es mi mejor día por ganancias totales y cuál por ganancias por hora?");
   assert(text?.includes("ganancias totales promedio"));
   assert(text?.includes("ganancias operativas por hora"));
-  assert(text?.includes("Friday"));
-  assert(text?.includes("Sunday"));
+  assert(text?.includes("viernes"));
+  assert(text?.includes("domingo"));
 });
 
 Deno.test("buildMobilityAnalysis: preserves pickup earnings while planner uses acceptance context", () => {
@@ -178,7 +178,7 @@ Deno.test("buildMobilityAnalysis: preserves pickup earnings while planner uses a
   assertEquals(result.pickupEarnings.zones[0]?.zone, "Murray");
   assertEquals(result.pickupEarnings.zones[0]?.earnings, 20);
   assertEquals(result.pickupEarnings.zones[0]?.rideHours, 1.33);
-  assertEquals(result.pickupEarnings.zones[0]?.earningsPerRideHour, 15.04);
+  assertEquals(result.pickupEarnings.zones[0]?.earningsPerRideHour, 15);
   assertEquals(result.pickupEarnings.bestTwoHourPickupWindows[0]?.weekday, "Thursday");
   assertEquals(result.pickupEarnings.bestTwoHourPickupWindows[0]?.averageWindowEarningsPerHour, 10);
   assertEquals(result.shiftPlanner?.candidates[0]?.zone, "North Salt Lake");

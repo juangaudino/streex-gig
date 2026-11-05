@@ -6,7 +6,7 @@ export interface ChangelogEntry {
   items: string[];
 }
 
-export const CURRENT_VERSION = "0.11.2";
+export const CURRENT_VERSION = "0.11.3";
 
 export function formatVersionLabel(version: string): string {
   const normalized = version.trim().replace(/^v/i, "");
@@ -17,6 +17,18 @@ export function formatVersionLabel(version: string): string {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "0.11.3",
+    date: "2026-11",
+    title: "Ask My Data Evidence and Accuracy",
+    tags: ["fix"],
+    items: [
+      "Hourly comparisons match eligible earnings with completed work hours and exclude unresolved amounts and pauses",
+      "Requested dates, monthly boundaries, zone allocations and ride-time rates use the matching records without double counting",
+      "Snapshot-based time windows are marked as estimates and use the driver's time zone when available",
+      "AI privacy copy clarifies that questions and summarized data may be sent to OpenAI",
+    ],
+  },
   {
     version: "0.11.2",
     date: "2026-10",

@@ -1,6 +1,7 @@
 import type { Database } from "@/integrations/supabase/types";
 import { isRewardApp, operationalDayTotal } from "./rewardIncome";
 import { earningsSnapshotTransitionKey, reconcileEarningsSnapshotDeltas, type ReconciledEarningsSnapshot } from "./earningsSnapshots";
+import { calculateDayPerformanceTotals } from "../../supabase/functions/_shared/snapshotReconciliation";
 import type {
   DayEntry,
   EarningsAttribution,
@@ -291,13 +292,7 @@ export function resolveDayPerformanceEarnings(args: {
     return sum + (reconciled.get(snapshot.id)?.effectiveDelta ?? 0);
   }, 0);
   const reportedOperationalEarnings = operationalDayTotal(args.day);
-  const legacyBaseline = Math.max(0, reportedOperationalEarnings - observedPositive);
-  const earnings = round(legacyBaseline + safeAttributed);
-  return {
-    earnings,
-    reportedOperationalEarnings: round(reportedOperationalEarnings),
-    excludedFromEfficiency: round(Math.max(0, reportedOperationalEarnings - earnings)),
-  };
+  return calculateDayPerformanceTotals(reportedOperationalEarnings, observedPositive, safeAttributed);
 }
 
 export function buildAttributedHourAmounts(args: {
