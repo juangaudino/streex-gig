@@ -2,6 +2,12 @@
 
 ## Beta Releases
 
+### Beta 0.11.4 — Foreground Ride Capture Reliability
+
+- Load ride history in pages so recent active rides remain visible beyond the API row limit.
+- Restore an existing active ride when a new start encounters the one-active-ride constraint.
+- Continue without a zone if foreground location fails or never responds, and show a recoverable message when a ride update cannot be confirmed.
+
 ### Beta 0.11.3 — Ask My Data Evidence and Accuracy
 
 ### Fixed

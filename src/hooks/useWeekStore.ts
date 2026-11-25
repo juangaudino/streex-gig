@@ -11,7 +11,7 @@ import { loadWeekRevisions, restoreWeekRevision, saveWeekWithRevision, type Week
 import type { Database, Json } from "@/integrations/supabase/types";
 import { dbToOperationalSnapshot, operationalDraftToRow } from "@/lib/operationalSnapshots";
 import { attributionIntentMatchesSnapshot, attributionToUpdateRow, dbToEarningsAttribution, intentToAttributionRow } from "@/lib/earningsAttributions";
-import { dbToRideEvent } from "@/lib/movementCapture";
+import { dbToRideEvent, loadRideEventPages } from "@/lib/movementCapture";
 
 const DEFAULT_SETTINGS: AppSettings = {
   defaultWeeklyGoal: 1200,
@@ -151,10 +151,12 @@ export function useWeekStore(user: User | null) {
           .from("earnings_attributions")
           .select("*")
           .order("created_at", { ascending: true }),
-        supabase
+        loadRideEventPages((from, to) => supabase
           .from("ride_events")
           .select("*")
-          .order("started_at", { ascending: true }),
+          .order("started_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, to)),
         supabase
           .from("ride_update_batches")
           .select("*")
@@ -548,15 +550,27 @@ export function useWeekStore(user: User | null) {
     weekId: string; dayDate: string; shiftId?: string | null; app?: string | null; startedAt: string; capture: RideCaptureResult;
   }): Promise<RideEvent | null> => {
     if (!user) return null;
+    let timeZone: string | null = null;
+    try { timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch { /* Time zone is optional ride context. */ }
     const { data, error } = await supabase.from("ride_events").insert({
       user_id: user.id, week_id: draft.weekId, day_date: draft.dayDate, shift_id: draft.shiftId ?? null,
       app: draft.app ?? null, started_at: draft.startedAt, lifecycle_version: 2, source: "foreground_browser", start_zone_key: draft.capture.zoneKey ?? null,
       // Never infer a time zone on the server. This is the browser's declared
       // IANA zone and enables only future aggregate local-window analysis.
-      time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
+      time_zone: timeZone,
       start_capture_status: draft.capture.status, start_accuracy_class: draft.capture.accuracyClass ?? null,
     }).select("*").single();
-    if (error) { console.warn("[rideEvents] start failed", error); return null; }
+    if (error) {
+      if (error.code === "23505") {
+        const active = await supabase.from("ride_events").select("*").eq("user_id", user.id).eq("status", "active").maybeSingle();
+        if (!active.error && active.data) {
+          const existing = dbToRideEvent(active.data);
+          setRideEvents((previous) => [...previous.filter((item) => item.id !== existing.id && item.status !== "active"), existing]);
+          return existing;
+        }
+      }
+      console.warn("[rideEvents] start failed", error); return null;
+    }
     const event = dbToRideEvent(data);
     setRideEvents((previous) => [...previous.filter((item) => item.id !== event.id), event]);
     return event;

@@ -35,30 +35,40 @@ export default function RideCaptureControl({ openWeek, apps, rideEvents, onStart
     if (!today || !activeShift || capturing) return;
     const startedAt = new Date().toISOString();
     setCapturing("start");
-    const capture = await captureForegroundZone();
-    const event = await onStart({ weekId: openWeek.id, dayDate: today.date, shiftId: activeShift.id, app: app || null, startedAt, capture });
-    setLastCaptureResult(!event ? "Ride was not saved. Try again." : capture.status === "captured" ? "En-route zone saved · confirm pickup when the passenger enters" : capture.status === "denied" ? "Location denied — en route saved without acceptance zone" : "En route saved without acceptance zone");
-    setCapturing(null);
+    setLastCaptureResult(null);
+    try {
+      const capture = await captureForegroundZone();
+      const event = await onStart({ weekId: openWeek.id, dayDate: today.date, shiftId: activeShift.id, app: app || null, startedAt, capture });
+      setLastCaptureResult(!event ? "Could not confirm the ride was saved. Refresh before trying again." : Date.parse(event.startedAt) !== Date.parse(startedAt) ? "Existing active ride restored." : capture.status === "captured" ? "En-route zone saved · confirm pickup when the passenger enters" : capture.status === "denied" ? "Location denied — en route saved without acceptance zone" : "En route saved without acceptance zone");
+    } catch {
+      setLastCaptureResult("Could not confirm the ride was saved. Refresh before trying again.");
+    } finally { setCapturing(null); }
   }
 
   async function markPickup() {
     if (!activeRide || capturing) return;
     const pickedUpAt = new Date().toISOString();
     setCapturing("pickup");
-    const capture = await captureForegroundZone();
-    const event = await onPickup(activeRide.id, pickedUpAt, capture);
-    setLastCaptureResult(!event ? "Pickup was not saved. Try again." : capture.status === "captured" ? "Pickup zone saved · earnings will belong to this zone" : capture.status === "denied" ? "Location denied — pickup saved without zone" : "Pickup saved without zone");
-    setCapturing(null);
+    setLastCaptureResult(null);
+    try {
+      const capture = await captureForegroundZone();
+      const event = await onPickup(activeRide.id, pickedUpAt, capture);
+      setLastCaptureResult(!event ? "Could not confirm pickup. Refresh before trying again." : capture.status === "captured" ? "Pickup zone saved · earnings will belong to this zone" : capture.status === "denied" ? "Location denied — pickup saved without zone" : "Pickup saved without zone");
+    } catch { setLastCaptureResult("Could not confirm pickup. Refresh before trying again."); }
+    finally { setCapturing(null); }
   }
 
   async function finishRide() {
     if (!activeRide || capturing) return;
     const endedAt = new Date().toISOString();
     setCapturing("finish");
-    const capture = await captureForegroundZone();
-    const event = await onFinish(activeRide.id, endedAt, capture);
-    setLastCaptureResult(!event ? "Ride was not saved. Try again." : capture.status === "captured" ? "End zone saved · ride completed" : capture.status === "denied" ? "Location denied — ride finished without zone" : "End zone unavailable — ride finished without zone");
-    setCapturing(null);
+    setLastCaptureResult(null);
+    try {
+      const capture = await captureForegroundZone();
+      const event = await onFinish(activeRide.id, endedAt, capture);
+      setLastCaptureResult(!event ? "Could not confirm the ride was finished. Refresh before trying again." : capture.status === "captured" ? "End zone saved · ride completed" : capture.status === "denied" ? "Location denied — ride finished without zone" : "End zone unavailable — ride finished without zone");
+    } catch { setLastCaptureResult("Could not confirm the ride was finished. Refresh before trying again."); }
+    finally { setCapturing(null); }
   }
 
   async function cancelRide(ride: RideEvent, label: string) {

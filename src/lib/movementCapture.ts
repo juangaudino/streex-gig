@@ -23,16 +23,31 @@ export function dbToRideEvent(row: RideEventRow): RideEvent {
 /** Captures one foreground position and immediately reduces it to a coarse ~5 km zone. */
 export async function captureForegroundZone(): Promise<RideCaptureResult> {
   if (typeof navigator === "undefined" || !navigator.geolocation) return { status: "unavailable" };
-  return new Promise((resolve) => navigator.geolocation.getCurrentPosition(
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => resolve({ status: "unavailable" }), 13_000);
+    const finish = (result: RideCaptureResult) => { clearTimeout(timeout); resolve(result); };
+    try { navigator.geolocation.getCurrentPosition(
     (position) => {
-      if (position.timestamp < Date.now() - 120_000) return resolve({ status: "stale" });
+      if (position.timestamp < Date.now() - 120_000) return finish({ status: "stale" });
       const accuracy = Number(position.coords.accuracy);
-      if (!Number.isFinite(accuracy) || accuracy > 250) return resolve({ status: "imprecise" });
+      if (!Number.isFinite(accuracy) || accuracy > 250) return finish({ status: "imprecise" });
       const latCell = Math.floor((position.coords.latitude + 90) / 0.05);
       const lonCell = Math.floor((position.coords.longitude + 180) / 0.05);
-      resolve({ zoneKey: `zone-v1:${latCell}:${lonCell}`, status: "captured", accuracyClass: accuracy <= 50 ? "high" : "usable" });
+      finish({ zoneKey: `zone-v1:${latCell}:${lonCell}`, status: "captured", accuracyClass: accuracy <= 50 ? "high" : "usable" });
     },
-    (error) => resolve({ status: error.code === error.PERMISSION_DENIED ? "denied" : "unavailable" }),
+    (error) => finish({ status: error.code === error.PERMISSION_DENIED ? "denied" : "unavailable" }),
     { enableHighAccuracy: false, maximumAge: 30_000, timeout: 12_000 },
-  ));
+    ); } catch { finish({ status: "unavailable" }); }
+  });
+}
+
+/** Load all owner-visible rides without losing recent records at the API row limit. */
+export async function loadRideEventPages<T>(fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>, pageSize = 500): Promise<{ data: T[] | null; error: unknown }> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const page = await fetchPage(from, from + pageSize - 1);
+    if (page.error) return { data: null, error: page.error };
+    rows.push(...(page.data ?? []));
+    if ((page.data?.length ?? 0) < pageSize) return { data: rows, error: null };
+  }
 }

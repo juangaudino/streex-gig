@@ -6,7 +6,7 @@ export interface ChangelogEntry {
   items: string[];
 }
 
-export const CURRENT_VERSION = "0.11.3";
+export const CURRENT_VERSION = "0.11.4";
 
 export function formatVersionLabel(version: string): string {
   const normalized = version.trim().replace(/^v/i, "");
@@ -17,6 +17,17 @@ export function formatVersionLabel(version: string): string {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "0.11.4",
+    date: "2026-11",
+    title: "Foreground Ride Capture Reliability",
+    tags: ["fix"],
+    items: [
+      "Keep recent rides visible even when ride history exceeds the API page limit",
+      "Restore an existing active ride and show clearer feedback when a ride update cannot be confirmed",
+      "Continue without a zone when foreground location is unavailable",
+    ],
+  },
   {
     version: "0.11.3",
     date: "2026-11",
